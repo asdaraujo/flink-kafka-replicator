@@ -20,17 +20,19 @@ under the License.
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	
-	<groupId>io.eventador</groupId>
-	<artifactId>flink-read-kafka</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<groupId>com.cloudera.flink</groupId>
+	<artifactId>flink-kafka-replicator</artifactId>
+	<version>1.0</version>
 	<packaging>jar</packaging>
 
-	<name>Flink Read Kafka</name>
-	<url>https://eventador.io</url>
+	<name>Flink Kafka Replicator</name>
+	<url>https://github.com/asdaraujo/flink-kafka-replicator</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<flink.version>1.6-SNAPSHOT</flink.version>
+		<flink.version>1.10.1</flink.version>
+		<kafka.version>2.2.0</kafka.version>
+		<slf4j.version>1.7.30</slf4j.version>
 	</properties>
 
 	<repositories>
@@ -45,6 +47,10 @@ under the License.
 				<enabled>true</enabled>
 			</snapshots>
 		</repository>
+		<repository>
+			<id>cloudera</id>
+			<url>https://repository.cloudera.com/artifactory/libs-release-local/</url>
+		</repository>
 	</repositories>
 
 	<dependencies>
@@ -56,11 +62,6 @@ under the License.
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-json</artifactId>
-			<version>${flink.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.flink</groupId>
-			<artifactId>flink-table_2.11</artifactId>
 			<version>${flink.version}</version>
 		</dependency>
 		<dependency>
@@ -78,11 +79,25 @@ under the License.
 			<artifactId>flink-clients_2.11</artifactId>
 			<version>${flink.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.apache.flink</groupId>
-			<artifactId>flink-connector-kafka-0.11_2.11</artifactId>
+			<artifactId>flink-connector-kafka_2.11</artifactId>
 			<version>${flink.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka-clients</artifactId>
+			<version>${kafka.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -102,23 +117,18 @@ under the License.
 				</dependency>
 				<dependency>
 					<groupId>org.apache.flink</groupId>
-					<artifactId>flink-table_2.10</artifactId>
-					<version>${flink.version}</version>
-				</dependency>
-				<dependency>
-					<groupId>org.apache.flink</groupId>
-					<artifactId>flink-streaming-java_2.10</artifactId>
+					<artifactId>flink-streaming-java_2.11</artifactId>
 					<version>${flink.version}</version>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
 					<groupId>org.apache.flink</groupId>
-					<artifactId>flink-streaming-scala_2.10</artifactId>
+					<artifactId>flink-streaming-scala_2.11</artifactId>
 					<version>${flink.version}</version>
 				</dependency>
 				<dependency>
 					<groupId>org.apache.flink</groupId>
-					<artifactId>flink-clients_2.10</artifactId>
+					<artifactId>flink-clients_2.11</artifactId>
 					<version>${flink.version}</version>
 					<scope>provided</scope>
 				</dependency>
@@ -139,7 +149,7 @@ under the License.
 								</goals>
 								<configuration>
 									<artifactSet>
-										<excludes combine.self="override"></excludes>
+										<excludes combine.self="override"/>
 									</artifactSet>
 								</configuration>
 							</execution>

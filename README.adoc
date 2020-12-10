@@ -1,0 +1,184 @@
+= Flink Kafka Replicator
+
+This Flink job replicates Kafka topics between Kafka clusters.
+
+== Building
+
+Run the following to create the job's JAR file:
+[source,shell]
+----
+mvn clean package
+----
+
+== Running
+
+The job can be submitted to Flink, either through the command line or through the Flink UI. All configuration is provided through the job's command line arguments.
+
+=== Command line examples
+
+The following command launches a Flink job on a YARN cluster, reading from an unsecured Kafka cluster and writing to a secure cluster (using TLS connections and SASL/PLAIN authentication):
+
+[source,shell]
+----
+flink run \
+  --detached \
+  --class com.cloudera.flink.FlinkKafkaReplicator \
+  --shutdownOnAttachedExit \
+  --jobmanager yarn-cluster \
+  --parallelism 1 \
+  /tmp/flink-replicate-kafka-1.0.jar \
+    --topics '^[^_].*' \
+    --consumer.bootstrap.servers edge2ai-1.dim.local:9092 \
+    --consumer.security.protocol PLAINTEXT \
+    --consumer.group.id consuming \
+    --producer.bootstrap.servers araujo-kafka-broker0.se-sandb.a465-9q4k.cloudera.site:9093,araujo-kafka-broker1.se-sandb.a465-9q4k.cloudera.site:9093,araujo-kafka-broker2.se-sandb.a465-9q4k.cloudera.site:9093 \
+    --producer.security.protocol SASL_SSL \
+    --producer.sasl.mechanism PLAIN \
+    --producer.sasl.jaas.config 'org.apache.kafka.common.security.plain.PlainLoginModule required username=<<araujo>> password=<<Supersecret1!>>;' \
+    --producer.ssl.truststore.location /opt/cloudera/security/truststore.jks \
+    --create-topics
+----
+
+=== Parameter reference
+
+==== Required arguments
+
+The following table lists the minimum set of arguments that must be specified:
+
+[%autowidth,cols="1,1a",options="header"]
+|====
+|Argument
+|Description
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--topics <regex>
+----
+|
+Regular expression matching the name of topics to replicate. The expression will match _any_ topics on the source Kafka, even Kafka internal topics. It's up to the user to provide an expression that excludes internal topics.
+
+Some examples:
+
+* To replicate all topics, excluding internal ones:
++
+`--topics '\^[^_].*'`
+* To replicate a single topic "mytopic":
++
+`--topics '^mytopic$'`
+* To replicate a few topics ("foo", "bar"):
++
+`--topics '\^(foo\|bar)$'`
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--consumer.bootstrap.servers <brokers>
+----
+|
+Comma-separated list of brokers for the _source_ Kafka cluster (where we'll read from). Each broker must be specified in the `fqdn:port`
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--consumer.group.id <group_id>
+----
+|
+Consumer group ID to use when reading data from the source
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--producer.bootstrap.servers <brokers>
+----
+|
+Comma-separated list of brokers for the _target_ Kafka cluster (where we'll write to). Each broker must be specified in the `fqdn:port`
+|====
+
+==== Optional arguments
+
+The following arguments are optional:
+
+[%autowidth,cols="1,1a,1",options="header"]
+|====
+|Argument
+|Description
+|Default
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--checkpoint-interval-ms <time_ms>
+----
+|Checkpoint interval, in milliseconds
+|1000
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--create-partitions
+----
+|If a topic being replicated already exists in the target cluster but with fewer partitions, the job will increase the number of partition for the target topic to match the source
+|If any topic on the target has fewer partitions than the same topic on the source, the job fails, unless `--no-preserve-partitioning` is specified
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--create-topics
+----
+|If a topic being replicated does not exist in the target cluster, it is created, with the same number of partitions and same properties the topic has on the source
+|If any topic doesn't exist on the target, the job fails
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--exactly-once
+----
+|Uses transactional writes to the target cluster to achieve _exactly-once_ semantics.
+|Writes to the target are non-transactional (_at-least-once_ semantics)
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--latest-offset
+----
+|When the job runs without resuming from a previous checkpoint/savepoint, it will start reading from the latest topic offsets
+|When the job runs without resuming from a previous checkpoint/savepoint, it will start reading from the earliest topic offsets
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--no-preserve-partitioning
+----
+|The partition assignment for each messages on the source topics will be ignored. Each message will be assigned a partition on the target cluster upon writing, according to the `DefaultPartitioner` 's logic
+|The messages will be replicated to the same partition they belong to on the source. The default behaviour can only be used if all the topics being replicated have the same number or more partitions on the target
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--sync-properties
+----
+|Copy all the topic properties from the source to the replicated topics on the target
+|Properties are not replicated
+
+// ===== ===== ===== ===== ===== ===== ===== ===== =====
+a|
+[source%nowrap,shell]
+----
+--transaction-timeout-ms <time_ms>
+----
+|The maximum amount of time, in milliseconds, that the transaction coordinator on the target will wait for a transaction to be updated. This argument is ignored if `--exactly-once` is not specified. When specified, the transaction timeout values must be greater than the checkpoint interval duration
+|870000 (14.5 minutes)
+
+|====
